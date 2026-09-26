@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %> - Simulador Física</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        .auto-split-box {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 8px 12px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            user-select: none;
+        }
+
+        .checkbox-container input[type="checkbox"] {
+            accent-color: var(--accent-mru);
+            width: 15px;
+            height: 15px;
+            cursor: pointer;
+        }
+
+        .interval-wrapper {
+            display: none;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .interval-wrapper.active {
+            display: flex;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Menú Lateral Reutilizable -->
+    <%- include('partials/sidebar') %>
+
+    <!-- Área de Contenido Principal -->
+    <main>
+        <section id="mru" class="tab-content active">
+            <div class="section-header">
+                <div>
+                    <h1 class="section-title">Movimiento Rectilíneo Uniforme (MRU)</h1>
+                    <p class="section-subtitle">Movimiento a velocidad constante sin aceleración en una trayectoria recta.</p>
+                </div>
+                <span class="section-badge" style="color: var(--accent-mru); border-color: var(--accent-mru);">a = 0 m/s²</span>
+            </div>
+
+            <div class="grid-container">
+                <div class="card">
+                    <h2 class="card-title">Parámetros</h2>
+                    
+                    <div class="input-group">
+                        <label for="mru-v">Velocidad constante (v)</label>
+                        <div class="input-control">
+                            <input type="range" id="mru-v" min="1" max="100" value="20">
+                            <div class="number-input-wrapper">
+                                <input type="number" class="value-input" id="mru-v-num" min="1" max="100" value="20">
+                                <span class="unit-label">m/s</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="mru-d">Distancia máxima (d)</label>
+                        <div class="input-control">
+                            <input type="range" id="mru-d" min="10" max="1000" step="5" value="200">
+                            <div class="number-input-wrapper">
+                                <input type="number" class="value-input" id="mru-d-num" min="10" max="1000" value="200">
+                                <span class="unit-label">m</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Opción Parciales Automáticos -->
+                    <div class="auto-split-box">
+                        <label class="checkbox-container">
+                            <input type="checkbox" id="mru-auto-split" onchange="toggleAutoSplitUI()">
+                            <span>Parciales Automáticos</span>
+                        </label>
+
+                        <div class="interval-wrapper" id="mru-interval-wrapper">
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">Cada:</span>
+                            <div class="number-input-wrapper">
+                                <input type="number" class="value-input" id="mru-split-interval" min="0.1" max="60" step="0.5" value="2" style="width: 65px;">
+                                <span class="unit-label">s</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="metrics-panel">
+                        <div>
+                            <div class="metric-title">Tiempo (t)</div>
+                            <div class="metric-value" id="mru-time-disp">0.00 s</div>
+                        </div>
+                        <div>
+                            <div class="metric-title">Posición (x)</div>
+                            <div class="metric-value" id="mru-pos-disp">0.00 m</div>
+                        </div>
+                    </div>
+
+                    <div class="btn-group">
+                        <button class="btn-action" id="btn-mru-start" style="background: var(--accent-mru); color: #090d16;" onclick="toggleMRU()">Iniciar</button>
+                        <button class="btn-action btn-split" onclick="takeMRUSplit()">Parcial</button>
+                        <button class="btn-action btn-secondary" onclick="resetMRU()">Reiniciar</button>
+                    </div>
+
+                    <!-- Tabla de Registro de Parciales -->
+                    <div class="splits-card">
+                        <div class="splits-title">Tiempos Parciales</div>
+                        <table class="splits-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Total (t / x)</th>
+                                    <th>Relativo (Δt / Δx)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mru-splits-body">
+                                <tr>
+                                    <td colspan="3" style="color: var(--text-muted); text-align: center; padding: 10px 0;">Sin parciales</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="simulation-view" id="mru-container">
+                    <canvas id="canvas-mru"></canvas>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        function toggleAutoSplitUI() {
+            const isChecked = document.getElementById('mru-auto-split').checked;
+            const wrapper = document.getElementById('mru-interval-wrapper');
+            if (isChecked) {
+                wrapper.classList.add('active');
+            } else {
+                wrapper.classList.remove('active');
+            }
+        }
+
+        // Sincronización bidireccional entre Sliders e Inputs Numéricos
+        document.querySelectorAll('input[type="range"]').forEach(slider => {
+            const numInput = document.getElementById(`${slider.id}-num`);
+            
+            if (numInput) {
+                slider.addEventListener('input', (e) => {
+                    numInput.value = e.target.value;
+                    triggerCustomInputEvent(slider.id);
+                });
+
+                numInput.addEventListener('input', (e) => {
+                    let val = parseFloat(e.target.value);
+                    const min = parseFloat(slider.min);
+                    const max = parseFloat(slider.max);
+
+                    if (isNaN(val)) return;
+
+                    if (val < min) val = min;
+                    if (val > max) val = max;
+
+                    slider.value = val;
+                    triggerCustomInputEvent(slider.id);
+                });
+            }
+        });
+
+        function triggerCustomInputEvent(id) {
+            if (id === 'mru-d' && !mruIsRunning && typeof drawMRUScene === 'function') {
+                drawMRUScene();
+            }
+        }
+
+        // -------------------------------------------------------------
+        // SIMULADOR MRU
+        // -------------------------------------------------------------
+        let canvasMRU, ctxMRU;
+        let mruAnimationId = null;
+        let mruIsRunning = false;
+        let mruTime = 0;
+        let mruPosition = 0;
+        let lastTimestamp = 0;
+
+        let mruSplits = [];
+        let mruLastSplitTime = 0;
+        let mruLastSplitPosition = 0;
+        let mruNextAutoSplitTime = 0;
+
+        function initMRU() {
+            canvasMRU = document.getElementById('canvas-mru');
+            const container = document.getElementById('mru-container');
+            
+            if (!canvasMRU || !container) return;
+
+            canvasMRU.width = container.clientWidth;
+            canvasMRU.height = container.clientHeight;
+
+            ctxMRU = canvasMRU.getContext('2d');
+            drawMRUScene();
+        }
+
+        function drawMRUScene() {
+            const width = canvasMRU.width;
+            const height = canvasMRU.height;
+            const maxDistance = parseFloat(document.getElementById('mru-d').value) || 200;
+
+            ctxMRU.clearRect(0, 0, width, height);
+
+            const roadY = height * 0.65;
+            ctxMRU.strokeStyle = '#334155';
+            ctxMRU.lineWidth = 4;
+            ctxMRU.beginPath();
+            ctxMRU.moveTo(0, roadY);
+            ctxMRU.lineTo(width, roadY);
+            ctxMRU.stroke();
+
+            const startX = 50;
+            const endX = width - 60;
+            const availableWidth = endX - startX;
+            const pixelPerMeter = availableWidth / maxDistance;
+
+            mruSplits.forEach((split, index) => {
+                const splitX = startX + (split.totalPos * pixelPerMeter);
+                ctxMRU.strokeStyle = 'rgba(56, 189, 248, 0.6)';
+                ctxMRU.lineWidth = 1.5;
+                ctxMRU.setLineDash([3, 3]);
+                ctxMRU.beginPath();
+                ctxMRU.moveTo(splitX, roadY - 25);
+                ctxMRU.lineTo(splitX, roadY);
+                ctxMRU.stroke();
+                ctxMRU.setLineDash([]);
+
+                ctxMRU.fillStyle = 'var(--accent-mru)';
+                ctxMRU.font = '9px "JetBrains Mono"';
+                ctxMRU.textAlign = 'center';
+                ctxMRU.fillText(`#${index + 1}`, splitX, roadY - 30);
+            });
+
+            const finishX = startX + (maxDistance * pixelPerMeter);
+            ctxMRU.strokeStyle = '#f43f5e';
+            ctxMRU.lineWidth = 2;
+            ctxMRU.setLineDash([5, 5]);
+            ctxMRU.beginPath();
+            ctxMRU.moveTo(finishX, roadY - 40);
+            ctxMRU.lineTo(finishX, roadY);
+            ctxMRU.stroke();
+            ctxMRU.setLineDash([]);
+
+            ctxMRU.fillStyle = '#f43f5e';
+            ctxMRU.font = 'bold 12px "JetBrains Mono"';
+            ctxMRU.textAlign = 'center';
+            ctxMRU.fillText(`META (${maxDistance}m)`, finishX, roadY - 48);
+
+            ctxMRU.fillStyle = '#64748b';
+            ctxMRU.font = '11px "JetBrains Mono"';
+            ctxMRU.textAlign = 'center';
+
+            let step = 10;
+            if (maxDistance > 100) step = 20;
+            if (maxDistance > 250) step = 50;
+            if (maxDistance > 500) step = 100;
+
+            for (let m = 0; m <= maxDistance; m += step) {
+                const tickX = startX + m * pixelPerMeter;
+                ctxMRU.beginPath();
+                ctxMRU.moveTo(tickX, roadY);
+                ctxMRU.lineTo(tickX, roadY + 8);
+                ctxMRU.strokeStyle = '#64748b';
+                ctxMRU.lineWidth = 1;
+                ctxMRU.stroke();
+                ctxMRU.fillText(`${m}m`, tickX, roadY + 24);
+            }
+
+            const currentX = startX + (mruPosition * pixelPerMeter);
+            const carY = roadY - 18;
+
+            if (mruPosition >= maxDistance) {
+                mruPosition = maxDistance;
+                mruIsRunning = false;
+                cancelAnimationFrame(mruAnimationId);
+                document.getElementById('btn-mru-start').textContent = 'Completado';
+                document.getElementById('btn-mru-start').style.background = '#10b981';
+            }
+
+            ctxMRU.fillStyle = '#38bdf8';
+            ctxMRU.shadowColor = '#38bdf8';
+            ctxMRU.shadowBlur = 12;
+            ctxMRU.beginPath();
+            ctxMRU.roundRect(currentX - 25, carY - 12, 50, 20, 6);
+            ctxMRU.fill();
+            ctxMRU.shadowBlur = 0;
+
+            ctxMRU.fillStyle = '#0f172a';
+            ctxMRU.beginPath();
+            ctxMRU.roundRect(currentX - 5, carY - 10, 18, 10, 3);
+            ctxMRU.fill();
+
+            ctxMRU.fillStyle = '#94a3b8';
+            ctxMRU.beginPath();
+            ctxMRU.arc(currentX - 15, carY + 8, 6, 0, Math.PI * 2);
+            ctxMRU.arc(currentX + 15, carY + 8, 6, 0, Math.PI * 2);
+            ctxMRU.fill();
+
+            ctxMRU.strokeStyle = 'rgba(56, 189, 248, 0.3)';
+            ctxMRU.lineWidth = 2;
+            ctxMRU.beginPath();
+            ctxMRU.moveTo(startX, roadY - 2);
+            ctxMRU.lineTo(currentX - 25, roadY - 2);
+            ctxMRU.stroke();
+        }
+
+        function updateMRU(timestamp) {
+            if (!mruIsRunning) return;
+
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            const deltaTime = (timestamp - lastTimestamp) / 1000;
+            lastTimestamp = timestamp;
+
+            const velocity = parseFloat(document.getElementById('mru-v').value) || 20;
+            const maxDistance = parseFloat(document.getElementById('mru-d').value) || 200;
+
+            mruTime += deltaTime;
+            mruPosition += velocity * deltaTime;
+
+            if (mruPosition > maxDistance) {
+                mruPosition = maxDistance;
+            }
+
+            // Lógica de captura automática de parciales por intervalo de tiempo
+            const autoSplitEnabled = document.getElementById('mru-auto-split').checked;
+            const interval = parseFloat(document.getElementById('mru-split-interval').value) || 2;
+
+            if (autoSplitEnabled && mruTime >= mruNextAutoSplitTime && mruPosition < maxDistance) {
+                takeMRUSplit();
+                mruNextAutoSplitTime = mruTime + interval;
+            }
+
+            document.getElementById('mru-time-disp').textContent = `${mruTime.toFixed(2)} s`;
+            document.getElementById('mru-pos-disp').textContent = `${mruPosition.toFixed(1)} m`;
+
+            drawMRUScene();
+
+            if (mruIsRunning) {
+                mruAnimationId = requestAnimationFrame(updateMRU);
+            }
+        }
+
+        function toggleMRU() {
+            const btn = document.getElementById('btn-mru-start');
+            const maxDistance = parseFloat(document.getElementById('mru-d').value) || 200;
+
+            if (mruPosition >= maxDistance) {
+                resetMRU();
+            }
+
+            if (mruIsRunning) {
+                mruIsRunning = false;
+                cancelAnimationFrame(mruAnimationId);
+                btn.textContent = 'Reanudar';
+                btn.style.background = 'var(--accent-mru)';
+            } else {
+                mruIsRunning = true;
+                lastTimestamp = 0;
+                
+                // Configurar primer disparo de autoparcial
+                const interval = parseFloat(document.getElementById('mru-split-interval').value) || 2;
+                if (mruTime === 0) {
+                    mruNextAutoSplitTime = interval;
+                }
+
+                mruAnimationId = requestAnimationFrame(updateMRU);
+                btn.textContent = 'Pausar';
+                btn.style.background = '#f59e0b';
+            }
+        }
+
+        function takeMRUSplit() {
+            if (mruTime === 0) return;
+
+            const relTime = mruTime - mruLastSplitTime;
+            const relPos = mruPosition - mruLastSplitPosition;
+
+            const splitData = {
+                id: mruSplits.length + 1,
+                totalTime: mruTime,
+                totalPos: mruPosition,
+                relTime: relTime,
+                relPos: relPos
+            };
+
+            mruSplits.push(splitData);
+
+            mruLastSplitTime = mruTime;
+            mruLastSplitPosition = mruPosition;
+
+            renderMRUSplitsTable();
+            drawMRUScene();
+        }
+
+        function renderMRUSplitsTable() {
+            const tbody = document.getElementById('mru-splits-body');
+            if (mruSplits.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" style="color: var(--text-muted); text-align: center; padding: 10px 0;">Sin parciales</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = mruSplits.map(s => `
+                <tr>
+                    <td style="color: var(--accent-mru); font-weight: bold;">#${s.id}</td>
+                    <td>${s.totalTime.toFixed(2)}s / ${s.totalPos.toFixed(1)}m</td>
+                    <td style="color: #6ee7b7;">+${s.relTime.toFixed(2)}s / +${s.relPos.toFixed(1)}m</td>
+                </tr>
+            `).join('');
+        }
+
+        function resetMRU() {
+            mruIsRunning = false;
+            cancelAnimationFrame(mruAnimationId);
+            mruTime = 0;
+            mruPosition = 0;
+            lastTimestamp = 0;
+
+            mruSplits = [];
+            mruLastSplitTime = 0;
+            mruLastSplitPosition = 0;
+            
+            const interval = parseFloat(document.getElementById('mru-split-interval').value) || 2;
+            mruNextAutoSplitTime = interval;
+
+            document.getElementById('mru-time-disp').textContent = '0.00 s';
+            document.getElementById('mru-pos-disp').textContent = '0.00 m';
+
+            const btn = document.getElementById('btn-mru-start');
+            btn.textContent = 'Iniciar';
+            btn.style.background = 'var(--accent-mru)';
+
+            renderMRUSplitsTable();
+            drawMRUScene();
+        }
+
+        window.addEventListener('resize', initMRU);
+        window.addEventListener('DOMContentLoaded', initMRU);
+    </script>
+</body>
+</html>

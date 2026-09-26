@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Física Cinemática</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --bg-sidebar: #090d16;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-mru: #38bdf8;
+            --accent-mrua: #a855f7;
+            --accent-parabolico: #f43f5e;
+            --border-color: #334155;
+            --radius-lg: 16px;
+            --radius-md: 10px;
+            --font-main: 'Outfit', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Lateral Menu / Sidebar */
+        aside {
+            width: 300px;
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 24px 16px;
+            gap: 24px;
+            flex-shrink: 0;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0 8px;
+        }
+
+        .brand-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent-mru), var(--accent-parabolico));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 20px;
+            color: #fff;
+        }
+
+        .brand-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(to right, #ffffff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .menu-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            padding-left: 8px;
+            font-weight: 600;
+        }
+
+        .nav-menu {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .nav-item {
+            cursor: pointer;
+            padding: 14px 16px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 500;
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid transparent;
+            position: relative;
+            text-decoration: none;
+        }
+
+        .nav-item:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+        }
+
+        .nav-item.active {
+            background-color: rgba(255, 255, 255, 0.08);
+            color: #ffffff;
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Section Indicator Dots */
+        .nav-item::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            transition: transform 0.2s ease;
+        }
+
+        .nav-item[data-target="mru"]::before { background-color: var(--accent-mru); }
+        .nav-item[data-target="mrua"]::before { background-color: var(--accent-mrua); }
+        .nav-item[data-target="parabolico"]::before { background-color: var(--accent-parabolico); }
+
+        .nav-item.active::before {
+            transform: scale(1.5);
+            box-shadow: 0 0 10px currentColor;
+        }
+
+        /* Main Content Layout */
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 32px;
+            overflow-y: auto;
+            gap: 24px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .section-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .section-subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .section-badge {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            padding: 4px 12px;
+            border-radius: 20px;
+            border: 1px solid;
+        }
+
+        /* Dynamic Grid Content */
+        .tab-content {
+            display: none;
+            flex-direction: column;
+            gap: 24px;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .tab-content.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 24px;
+        }
+
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* Inputs & Controls */
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .input-group label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .input-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            accent-color: var(--accent-mru);
+        }
+
+        /* Campo de texto numérico editable para los valores */
+        .number-input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .value-input {
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 5px 24px 5px 8px;
+            border-radius: 6px;
+            width: 85px;
+            text-align: right;
+            transition: border-color 0.2s;
+        }
+
+        .value-input:focus {
+            outline: none;
+            border-color: var(--accent-mru);
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        /* Quitar las flechas por defecto de los inputs de tipo number */
+        .value-input::-webkit-outer-spin-button,
+        .value-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .value-input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        .unit-label {
+            position: absolute;
+            right: 8px;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            pointer-events: none;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-action {
+            flex: 1;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: #fff;
+            border: none;
+            padding: 10px 12px;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            font-size: 0.88rem;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-action:hover {
+            opacity: 0.9;
+        }
+
+        .btn-secondary {
+            background: var(--bg-sidebar);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+        }
+
+        .btn-secondary:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .btn-split {
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid var(--accent-mru);
+            color: var(--accent-mru);
+        }
+
+        .btn-split:hover {
+            background: rgba(56, 189, 248, 0.25);
+        }
+
+        /* Canvas Screen */
+        .simulation-view {
+            position: relative;
+            background: #020617;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Formulas list */
+        .formula-box {
+            background: rgba(0, 0, 0, 0.3);
+            border-left: 3px solid var(--accent-mru);
+            padding: 12px;
+            border-radius: 0 var(--radius-md) var(--radius-md) 0;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+
+        .metrics-panel {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 12px;
+            border-radius: var(--radius-md);
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+        }
+
+        .metric-title {
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+        }
+
+        .metric-value {
+            font-size: 1rem;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        /* Tabla de Parciales */
+        .splits-card {
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 12px;
+            max-height: 180px;
+            overflow-y: auto;
+        }
+
+        .splits-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .splits-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            text-align: left;
+        }
+
+        .splits-table th {
+            color: var(--text-muted);
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 500;
+        }
+
+        .splits-table td {
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Menú Lateral -->
+    <aside>
+        <div class="brand">
+            <div class="brand-icon">Φ</div>
+            <div class="brand-title">Simulador Física</div>
+        </div>
+
+        <div>
+            <div class="menu-label">Temas de Cinemática</div>
+            <ul class="nav-menu">
+                <a href="/mru" class="nav-item" data-target="mru">
+                    Movimiento Rectilíneo Uniforme (MRU)
+                </a>
+                <a href="/mrua" class="nav-item" data-target="mrua">
+                    Movimiento Rectilíneo Uniformemente Acelerado (MRUA)
+                </a>
+                <a href="/parabolico" class="nav-item" data-target="parabolico">
+                    Movimiento Parabólico
+                </a>
+            </ul>
+        </div>
+    </aside>
+
+    <!-- Área de Contenido Principal -->
+    <main>
+
+        <!-- SECCIÓN 1: MRU -->
+        <section id="mru" class="tab-content">
+            <div class="section-header">
+                <div>
+                    <h1 class="section-title">Movimiento Rectilíneo Uniforme (MRU)</h1>
+                    <p class="section-subtitle">Movimiento a velocidad constante sin aceleración en una trayectoria recta.</p>
+                </div>
+                <span class="section-badge" style="color: var(--accent-mru); border-color: var(--accent-mru);">a = 0 m/s²</span>
+            </div>
+
+            <div class="grid-container">
+                <div class="card">
+                    <h2 class="card-title">Parámetros</h2>
+                    
+                    <div class="input-group">
+                        <label for="mru-v">Velocidad constante (v)</label>
+                        <div class="input-control">
+                            <input type="range" id="mru-v" min="1" max="100" value="20">
+                            <div class="number-input-wrapper">
+                                <input type="number" class="value-input" id="mru-v-num" min="1" max="100" value="20">
+                                <span class="unit-label">m/s</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="mru-d">Distancia máxima (d)</label>
+                        <div class="input-control">
+                            <input type="range" id="mru-d" min="10" max="1000" step="5" value="200">
+                            <div class="number-input-wrapper">
+                                <input type="number" class="value-input" id="mru-d-num" min="10" max="1000" value="200">
+                                <span class="unit-label">m</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="metrics-panel">
+                        <div>
+                            <div class="metric-title">Tiempo (t)</div>
+                            <div class="metric-value" id="mru-time-disp">0.00 s</div>
+                        </div>
+                        <div>
+                            <div class="metric-title">Posición (x)</div>
+                            <div class="metric-value" id="mru-pos-disp">0.00 m</div>
+                        </div>
+                    </div>
+
+                    <div class="btn-group">
+                        <button class="btn-action" id="btn-mru-start" style="background: var(--accent-mru); color: #090d16;" onclick="toggleMRU()">Iniciar</button>
+                        <button class="btn-action btn-split" onclick="takeMRUSplit()">Parcial</button>
+                        <button class="btn-action btn-secondary" onclick="resetMRU()">Reiniciar</button>
+                    </div>
+
+                    <!-- Tabla de Registro de Parciales -->
+                    <div class="splits-card">
+                        <div class="splits-title">Tiempos Parciales</div>
+                        <table class="splits-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Total (t / x)</th>
+                                    <th>Relativo (Δt / Δx)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mru-splits-body">
+                                <tr>
+                                    <td colspan="3" style="color: var(--text-muted); text-align: center; padding: 10px 0;">Sin parciales</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="simulation-view" id="mru-container">
+                    <canvas id="canvas-mru"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 2: MRUA -->
+        <section id="mrua" class="tab-content">
+            <div class="section-header">
+                <div>
+                    <h1 class="section-title">Movimiento Rectilíneo Uniformemente Acelerado (MRUA)</h1>
+                    <p class="section-subtitle">Movimiento en línea recta con una aceleración constante.</p>
+                </div>
+                <span class="section-badge" style="color: var(--accent-mrua); border-color: var(--accent-mrua);">a = cte</span>
+            </div>
+
+            <div class="grid-container">
+                <div class="card">
+                    <h2 class="card-title">Parámetros</h2>
+
+                    <div class="input-group">
+                        <label for="mrua-v0">Velocidad inicial (v₀)</label>
+                        <div class="input-control">
+                            <input type="range" id="mrua-v0" min="0" max="50" value="0">
+                            <div class="number-input-wrapper">
+                                <input type="number" class="value-input" id="mrua-v0-num" min="0" max="50" value="0">
+                                <span class="unit-label">m/s</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="mrua-a">Aceleración (a)</label>
+                        <div class="input-control">
+                            <input type="range" id="mrua-a" min="1" max="50" value="5">
+                            <div class="number-input-wrapper">
+                                <input type="number" class="value-input" id="mrua-a-num" min="1" max="50" value="5">
+                                <span class="unit-label">m/s²</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="formula-box" style="border-color: var(--accent-mrua);">
+                        Fórmulas:<br>
+                        <strong>v = v₀ + a · t</strong><br>
+                        <strong>x = x₀ + v₀·t + ½·a·t²</strong>
+                    </div>
+
+                    <button class="btn-action" style="background: var(--accent-mrua);" onclick="runMRUA()">Iniciar Simulación</button>
+                </div>
+
+                <div class="simulation-view">
+                    <canvas id="canvas-mrua"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 3: Movimiento Parabólico -->
+        <section id="parabolico" class="tab-content">
+            <div class="section-header">
+                <div>
+                    <h1 class="section-title">Movimiento Parabólico</h1>
+                    <p class="section-subtitle">Movimiento bidimensional bajo la influencia de la gravedad.</p>
+                </div>
+                <span class="section-badge" style="color: var(--accent-parabolico); border-color: var(--accent-parabolico);">2D + Gravedad</span>
+            </div>
+
+            <div class="grid-container">
+                <div class="card">
+                    <h2 class="card-title">Parámetros</h2>
+
+                    <div class="input-group">
+                        <label for="para-v0">Velocidad Inicial (v₀)</label>
+                        <div class="input-control">
+                            <input type="range" id="para-v0" min="5" max="100" value="35">
+                            <div class="number-input-wrapper">
+                                <input type="number" class="value-input" id="para-v0-num" min="5" max="100" value="35">
+                                <span class="unit-label">m/s</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="para-angle">Ángulo de Lanzamiento (θ)</label>
+                        <div class="input-control">
+                            <input type="range" id="para-angle" min="1" max="89" value="45">
+                            <div class="number-input-wrapper">
+                                <input type="number" class="value-input" id="para-angle-num" min="1" max="89" value="45">
+                                <span class="unit-label">°</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="formula-box" style="border-color: var(--accent-parabolico);">
+                        Ecuaciones:<br>
+                        <strong>x = v₀ · cos(θ) · t</strong><br>
+                        <strong>y = v₀ · sin(θ) · t - ½·g·t²</strong>
+                    </div>
+
+                    <button class="btn-action" style="background: var(--accent-parabolico);" onclick="runParabolico()">Lanzar Proyectil</button>
+                </div>
+
+                <div class="simulation-view">
+                    <canvas id="canvas-parabolico"></canvas>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // Mapeo dinámico de ruta a sección
+        function setSectionFromPath() {
+            const path = window.location.pathname.replace('/', '') || 'mru';
+            const validTarget = ['mru', 'mrua', 'parabolico'].includes(path) ? path : 'mru';
+
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            const activeNav = document.querySelector(`.nav-item[data-target="${validTarget}"]`);
+            const activeTab = document.getElementById(validTarget);
+
+            if (activeNav) activeNav.classList.add('active');
+            if (activeTab) activeTab.classList.add('active');
+
+            if (validTarget === 'mru') {
+                initMRU();
+            }
+        }
+
+        // Manejo de clicks para SPA / Navegación HTML5
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetPath = item.getAttribute('href');
+                history.pushState(null, '', targetPath);
+                setSectionFromPath();
+            });
+        });
+
+        window.addEventListener('popstate', setSectionFromPath);
+
+        // Sincronización bidireccional entre Sliders (Range) e Inputs Numéricos
+        document.querySelectorAll('input[type="range"]').forEach(slider => {
+            const numInput = document.getElementById(`${slider.id}-num`);
+            
+            if (numInput) {
+                // De Range a Number Input
+                slider.addEventListener('input', (e) => {
+                    numInput.value = e.target.value;
+                    triggerCustomInputEvent(slider.id);
+                });
+
+                // De Number Input a Range
+                numInput.addEventListener('input', (e) => {
+                    let val = parseFloat(e.target.value);
+                    const min = parseFloat(slider.min);
+                    const max = parseFloat(slider.max);
+
+                    if (isNaN(val)) return;
+
+                    // Clampear valor dentro de los límites si sobrepasa
+                    if (val < min) val = min;
+                    if (val > max) val = max;
+
+                    slider.value = val;
+                    triggerCustomInputEvent(slider.id);
+                });
+            }
+        });
+
+        function triggerCustomInputEvent(id) {
+            if (id === 'mru-d' && !mruIsRunning && typeof drawMRUScene === 'function') {
+                drawMRUScene();
+            }
+        }
+
+        // -------------------------------------------------------------
+        // SIMULADOR MRU (Movimiento Rectilíneo Uniforme)
+        // -------------------------------------------------------------
+        let canvasMRU, ctxMRU;
+        let mruAnimationId = null;
+        let mruIsRunning = false;
+        let mruTime = 0;
+        let mruPosition = 0; // en metros
+        let lastTimestamp = 0;
+
+        // Variables para tiempos y distancias parciales
+        let mruSplits = [];
+        let mruLastSplitTime = 0;
+        let mruLastSplitPosition = 0;
+
+        function initMRU() {
+            canvasMRU = document.getElementById('canvas-mru');
+            const container = document.getElementById('mru-container');
+            
+            if (!canvasMRU || !container) return;
+
+            // Ajustar tamaño del canvas
+            canvasMRU.width = container.clientWidth;
+            canvasMRU.height = container.clientHeight;
+
+            ctxMRU = canvasMRU.getContext('2d');
+            drawMRUScene();
+        }
+
+        function drawMRUScene() {
+            const width = canvasMRU.width;
+            const height = canvasMRU.height;
+            const maxDistance = parseFloat(document.getElementById('mru-d').value) || 200;
+
+            // Limpiar fondo
+            ctxMRU.clearRect(0, 0, width, height);
+
+            // Dibujar Pista/Carretera
+            const roadY = height * 0.65;
+            ctxMRU.strokeStyle = '#334155';
+            ctxMRU.lineWidth = 4;
+            ctxMRU.beginPath();
+            ctxMRU.moveTo(0, roadY);
+            ctxMRU.lineTo(width, roadY);
+            ctxMRU.stroke();
+
+            // Calcular escala dinámica
+            const startX = 50;
+            const endX = width - 60;
+            const availableWidth = endX - startX;
+            const pixelPerMeter = availableWidth / maxDistance;
+
+            // Dibujar Marcas de Parciales Capturados en el Canvas
+            mruSplits.forEach((split, index) => {
+                const splitX = startX + (split.totalPos * pixelPerMeter);
+                ctxMRU.strokeStyle = 'rgba(56, 189, 248, 0.6)';
+                ctxMRU.lineWidth = 1.5;
+                ctxMRU.setLineDash([3, 3]);
+                ctxMRU.beginPath();
+                ctxMRU.moveTo(splitX, roadY - 25);
+                ctxMRU.lineTo(splitX, roadY);
+                ctxMRU.stroke();
+                ctxMRU.setLineDash([]);
+
+                ctxMRU.fillStyle = 'var(--accent-mru)';
+                ctxMRU.font = '9px "JetBrains Mono"';
+                ctxMRU.textAlign = 'center';
+                ctxMRU.fillText(`#${index + 1}`, splitX, roadY - 30);
+            });
+
+            // Dibujar Línea / Banderín de Meta (Distancia Máxima)
+            const finishX = startX + (maxDistance * pixelPerMeter);
+            ctxMRU.strokeStyle = '#f43f5e';
+            ctxMRU.lineWidth = 2;
+            ctxMRU.setLineDash([5, 5]);
+            ctxMRU.beginPath();
+            ctxMRU.moveTo(finishX, roadY - 40);
+            ctxMRU.lineTo(finishX, roadY);
+            ctxMRU.stroke();
+            ctxMRU.setLineDash([]);
+
+            // Etiqueta de Meta
+            ctxMRU.fillStyle = '#f43f5e';
+            ctxMRU.font = 'bold 12px "JetBrains Mono"';
+            ctxMRU.textAlign = 'center';
+            ctxMRU.fillText(`META (${maxDistance}m)`, finishX, roadY - 48);
+
+            // Dibujar Marcas de Distancia (Regla)
+            ctxMRU.fillStyle = '#64748b';
+            ctxMRU.font = '11px "JetBrains Mono"';
+            ctxMRU.textAlign = 'center';
+
+            let step = 10;
+            if (maxDistance > 100) step = 20;
+            if (maxDistance > 250) step = 50;
+            if (maxDistance > 500) step = 100;
+
+            for (let m = 0; m <= maxDistance; m += step) {
+                const tickX = startX + m * pixelPerMeter;
+                ctxMRU.beginPath();
+                ctxMRU.moveTo(tickX, roadY);
+                ctxMRU.lineTo(tickX, roadY + 8);
+                ctxMRU.strokeStyle = '#64748b';
+                ctxMRU.lineWidth = 1;
+                ctxMRU.stroke();
+                ctxMRU.fillText(`${m}m`, tickX, roadY + 24);
+            }
+
+            // Calcular posición X del móvil en píxeles
+            const currentX = startX + (mruPosition * pixelPerMeter);
+            const carY = roadY - 18;
+
+            // Detener automáticamente al llegar a la distancia máxima
+            if (mruPosition >= maxDistance) {
+                mruPosition = maxDistance;
+                mruIsRunning = false;
+                cancelAnimationFrame(mruAnimationId);
+                document.getElementById('btn-mru-start').textContent = 'Completado';
+                document.getElementById('btn-mru-start').style.background = '#10b981';
+            }
+
+            // Dibujar Móvil (Coche / Cápsula Cyberpunk)
+            ctxMRU.fillStyle = '#38bdf8';
+            ctxMRU.shadowColor = '#38bdf8';
+            ctxMRU.shadowBlur = 12;
+            ctxMRU.beginPath();
+            ctxMRU.roundRect(currentX - 25, carY - 12, 50, 20, 6);
+            ctxMRU.fill();
+            ctxMRU.shadowBlur = 0;
+
+            // Ventana/Cabina
+            ctxMRU.fillStyle = '#0f172a';
+            ctxMRU.beginPath();
+            ctxMRU.roundRect(currentX - 5, carY - 10, 18, 10, 3);
+            ctxMRU.fill();
+
+            // Ruedas
+            ctxMRU.fillStyle = '#94a3b8';
+            ctxMRU.beginPath();
+            ctxMRU.arc(currentX - 15, carY + 8, 6, 0, Math.PI * 2);
+            ctxMRU.arc(currentX + 15, carY + 8, 6, 0, Math.PI * 2);
+            ctxMRU.fill();
+
+            // Línea de Estela / Rastro
+            ctxMRU.strokeStyle = 'rgba(56, 189, 248, 0.3)';
+            ctxMRU.lineWidth = 2;
+            ctxMRU.beginPath();
+            ctxMRU.moveTo(startX, roadY - 2);
+            ctxMRU.lineTo(currentX - 25, roadY - 2);
+            ctxMRU.stroke();
+        }
+
+        function updateMRU(timestamp) {
+            if (!mruIsRunning) return;
+
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            const deltaTime = (timestamp - lastTimestamp) / 1000;
+            lastTimestamp = timestamp;
+
+            const velocity = parseFloat(document.getElementById('mru-v').value) || 20;
+            const maxDistance = parseFloat(document.getElementById('mru-d').value) || 200;
+
+            // Ecuación MRU: x = v * t
+            mruTime += deltaTime;
+            mruPosition += velocity * deltaTime;
+
+            if (mruPosition > maxDistance) {
+                mruPosition = maxDistance;
+            }
+
+            // Actualizar métricas visuales
+            document.getElementById('mru-time-disp').textContent = `${mruTime.toFixed(2)} s`;
+            document.getElementById('mru-pos-disp').textContent = `${mruPosition.toFixed(1)} m`;
+
+            drawMRUScene();
+
+            if (mruIsRunning) {
+                mruAnimationId = requestAnimationFrame(updateMRU);
+            }
+        }
+
+        function toggleMRU() {
+            const btn = document.getElementById('btn-mru-start');
+            const maxDistance = parseFloat(document.getElementById('mru-d').value) || 200;
+
+            if (mruPosition >= maxDistance) {
+                resetMRU();
+            }
+
+            if (mruIsRunning) {
+                mruIsRunning = false;
+                cancelAnimationFrame(mruAnimationId);
+                btn.textContent = 'Reanudar';
+                btn.style.background = 'var(--accent-mru)';
+            } else {
+                mruIsRunning = true;
+                lastTimestamp = 0;
+                mruAnimationId = requestAnimationFrame(updateMRU);
+                btn.textContent = 'Pausar';
+                btn.style.background = '#f59e0b';
+            }
+        }
+
+        function takeMRUSplit() {
+            if (mruTime === 0) return;
+
+            const relTime = mruTime - mruLastSplitTime;
+            const relPos = mruPosition - mruLastSplitPosition;
+
+            const splitData = {
+                id: mruSplits.length + 1,
+                totalTime: mruTime,
+                totalPos: mruPosition,
+                relTime: relTime,
+                relPos: relPos
+            };
+
+            mruSplits.push(splitData);
+
+            mruLastSplitTime = mruTime;
+            mruLastSplitPosition = mruPosition;
+
+            renderMRUSplitsTable();
+            drawMRUScene();
+        }
+
+        function renderMRUSplitsTable() {
+            const tbody = document.getElementById('mru-splits-body');
+            if (mruSplits.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" style="color: var(--text-muted); text-align: center; padding: 10px 0;">Sin parciales</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = mruSplits.map(s => `
+                <tr>
+                    <td style="color: var(--accent-mru); font-weight: bold;">#${s.id}</td>
+                    <td>${s.totalTime.toFixed(2)}s / ${s.totalPos.toFixed(1)}m</td>
+                    <td style="color: #6ee7b7;">+${s.relTime.toFixed(2)}s / +${s.relPos.toFixed(1)}m</td>
+                </tr>
+            `).join('');
+        }
+
+        function resetMRU() {
+            mruIsRunning = false;
+            cancelAnimationFrame(mruAnimationId);
+            mruTime = 0;
+            mruPosition = 0;
+            lastTimestamp = 0;
+
+            mruSplits = [];
+            mruLastSplitTime = 0;
+            mruLastSplitPosition = 0;
+
+            document.getElementById('mru-time-disp').textContent = '0.00 s';
+            document.getElementById('mru-pos-disp').textContent = '0.00 m';
+
+            const btn = document.getElementById('btn-mru-start');
+            btn.textContent = 'Iniciar';
+            btn.style.background = 'var(--accent-mru)';
+
+            renderMRUSplitsTable();
+            drawMRUScene();
+        }
+
+        window.addEventListener('resize', () => {
+            if (document.getElementById('mru').classList.contains('active')) {
+                initMRU();
+            }
+        });
+
+        // Ejecución al cargar
+        setSectionFromPath();
+
+        function runMRUA() { console.log("MRUA"); }
+        function runParabolico() { console.log("Parabólico"); }
+    </script>
+</body>
+</html>

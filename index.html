@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Física Cinemática</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --bg-sidebar: #090d16;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-mru: #38bdf8;
+            --accent-mrua: #a855f7;
+            --accent-parabolico: #f43f5e;
+            --border-color: #334155;
+            --radius-lg: 16px;
+            --radius-md: 10px;
+            --font-main: 'Outfit', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Lateral Menu / Sidebar */
+        aside {
+            width: 300px;
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 24px 16px;
+            gap: 24px;
+            flex-shrink: 0;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0 8px;
+        }
+
+        .brand-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent-mru), var(--accent-parabolico));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 20px;
+            color: #fff;
+        }
+
+        .brand-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(to right, #ffffff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .menu-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            padding-left: 8px;
+            font-weight: 600;
+        }
+
+        .nav-menu {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .nav-item {
+            cursor: pointer;
+            padding: 14px 16px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 500;
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-item:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+        }
+
+        .nav-item.active {
+            background-color: rgba(255, 255, 255, 0.08);
+            color: #ffffff;
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Section Indicator Dots */
+        .nav-item::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            transition: transform 0.2s ease;
+        }
+
+        .nav-item[data-target="mru"]::before { background-color: var(--accent-mru); }
+        .nav-item[data-target="mrua"]::before { background-color: var(--accent-mrua); }
+        .nav-item[data-target="parabolico"]::before { background-color: var(--accent-parabolico); }
+
+        .nav-item.active::before {
+            transform: scale(1.5);
+            box-shadow: 0 0 10px currentColor;
+        }
+
+        /* Main Content Layout */
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 32px;
+            overflow-y: auto;
+            gap: 24px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .section-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .section-subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .section-badge {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            padding: 4px 12px;
+            border-radius: 20px;
+            border: 1px solid;
+        }
+
+        /* Dynamic Grid Content */
+        .tab-content {
+            display: none;
+            flex-direction: column;
+            gap: 24px;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .tab-content.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 24px;
+        }
+
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* Inputs & Controls */
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .input-group label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .input-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            accent-color: var(--accent-mru);
+        }
+
+        .value-display {
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 4px 8px;
+            border-radius: 6px;
+            min-width: 65px;
+            text-align: right;
+        }
+
+        .btn-action {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: #fff;
+            border: none;
+            padding: 12px;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            margin-top: 8px;
+        }
+
+        .btn-action:hover {
+            opacity: 0.9;
+        }
+
+        /* Canvas Screen */
+        .simulation-view {
+            position: relative;
+            background: #020617;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Formulas list */
+        .formula-box {
+            background: rgba(0, 0, 0, 0.3);
+            border-left: 3px solid var(--accent-mru);
+            padding: 12px;
+            border-radius: 0 var(--radius-md) var(--radius-md) 0;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Menú Lateral -->
+    <aside>
+        <div class="brand">
+            <div class="brand-icon">Φ</div>
+            <div class="brand-title">Simulador Física</div>
+        </div>
+
+        <div>
+            <div class="menu-label">Temas de Cinemática</div>
+            <ul class="nav-menu">
+                <li class="nav-item active" data-target="mru">
+                    Movimiento Rectilíneo Uniforme (MRU)
+                </li>
+                <li class="nav-item" data-target="mrua">
+                    Movimiento Rectilíneo Uniformemente Acelerado (MRUA)
+                </li>
+                <li class="nav-item" data-target="parabolico">
+                    Movimiento Parabólico
+                </li>
+            </ul>
+        </div>
+    </aside>
+
+    <!-- Área de Contenido Principal -->
+    <main>
+
+        <!-- SECCIÓN 1: MRU -->
+        <section id="mru" class="tab-content active">
+            <div class="section-header">
+                <div>
+                    <h1 class="section-title">Movimiento Rectilíneo Uniforme (MRU)</h1>
+                    <p class="section-subtitle">Movimiento a velocidad constante sin aceleración en una trayectoria recta.</p>
+                </div>
+                <span class="section-badge" style="color: var(--accent-mru); border-color: var(--accent-mru);">a = 0 m/s²</span>
+            </div>
+
+            <div class="grid-container">
+                <div class="card">
+                    <h2 class="card-title">Parámetros</h2>
+                    
+                    <div class="input-group">
+                        <label for="mru-v">Velocidad constante (v)</label>
+                        <div class="input-control">
+                            <input type="range" id="mru-v" min="1" max="50" value="10">
+                            <span class="value-display" id="mru-v-val">10 m/s</span>
+                        </div>
+                    </div>
+
+                    <div class="formula-box" style="border-color: var(--accent-mru);">
+                        Fórmula principal:<br>
+                        <strong>x = x₀ + v · t</strong>
+                    </div>
+
+                    <button class="btn-action" style="background: var(--accent-mru);" onclick="runMRU()">Iniciar Simulación</button>
+                </div>
+
+                <div class="simulation-view">
+                    <canvas id="canvas-mru"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 2: MRUA -->
+        <section id="mrua" class="tab-content">
+            <div class="section-header">
+                <div>
+                    <h1 class="section-title">Movimiento Rectilíneo Uniformemente Acelerado (MRUA)</h1>
+                    <p class="section-subtitle">Movimiento en línea recta con una aceleración constante.</p>
+                </div>
+                <span class="section-badge" style="color: var(--accent-mrua); border-color: var(--accent-mrua);">a = cte</span>
+            </div>
+
+            <div class="grid-container">
+                <div class="card">
+                    <h2 class="card-title">Parámetros</h2>
+
+                    <div class="input-group">
+                        <label for="mrua-v0">Velocidad inicial (v₀)</label>
+                        <div class="input-control">
+                            <input type="range" id="mrua-v0" min="0" max="30" value="0">
+                            <span class="value-display" id="mrua-v0-val">0 m/s</span>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="mrua-a">Aceleración (a)</label>
+                        <div class="input-control">
+                            <input type="range" id="mrua-a" min="1" max="20" value="5">
+                            <span class="value-display" id="mrua-a-val">5 m/s²</span>
+                        </div>
+                    </div>
+
+                    <div class="formula-box" style="border-color: var(--accent-mrua);">
+                        Fórmulas:<br>
+                        <strong>v = v₀ + a · t</strong><br>
+                        <strong>x = x₀ + v₀·t + ½·a·t²</strong>
+                    </div>
+
+                    <button class="btn-action" style="background: var(--accent-mrua);" onclick="runMRUA()">Iniciar Simulación</button>
+                </div>
+
+                <div class="simulation-view">
+                    <canvas id="canvas-mrua"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 3: Movimiento Parabólico -->
+        <section id="parabolico" class="tab-content">
+            <div class="section-header">
+                <div>
+                    <h1 class="section-title">Movimiento Parabólico</h1>
+                    <p class="section-subtitle">Movimiento bidimensional bajo la influencia de la gravedad.</p>
+                </div>
+                <span class="section-badge" style="color: var(--accent-parabolico); border-color: var(--accent-parabolico);">2D + Gravedad</span>
+            </div>
+
+            <div class="grid-container">
+                <div class="card">
+                    <h2 class="card-title">Parámetros</h2>
+
+                    <div class="input-group">
+                        <label for="para-v0">Velocidad Inicial (v₀)</label>
+                        <div class="input-control">
+                            <input type="range" id="para-v0" min="10" max="60" value="35">
+                            <span class="value-display" id="para-v0-val">35 m/s</span>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="para-angle">Ángulo de Lanzamiento (θ)</label>
+                        <div class="input-control">
+                            <input type="range" id="para-angle" min="15" max="80" value="45">
+                            <span class="value-display" id="para-angle-val">45°</span>
+                        </div>
+                    </div>
+
+                    <div class="formula-box" style="border-color: var(--accent-parabolico);">
+                        Ecuaciones:<br>
+                        <strong>x = v₀ · cos(θ) · t</strong><br>
+                        <strong>y = v₀ · sin(θ) · t - ½·g·t²</strong>
+                    </div>
+
+                    <button class="btn-action" style="background: var(--accent-parabolico);" onclick="runParabolico()">Lanzar Proyectil</button>
+                </div>
+
+                <div class="simulation-view">
+                    <canvas id="canvas-parabolico"></canvas>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // Navegación entre pestañas
+        const navItems = document.querySelectorAll('.nav-item');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        navItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const target = item.getAttribute('data-target');
+
+                navItems.forEach(i => i.classList.remove('active'));
+                tabContents.forEach(c => c.classList.remove('active'));
+
+                item.classList.add('active');
+                document.getElementById(target).classList.add('active');
+            });
+        });
+
+        // Actualización visual de sliders
+        document.querySelectorAll('input[type="range"]').forEach(slider => {
+            slider.addEventListener('input', (e) => {
+                const valSpan = document.getElementById(`${e.target.id}-val`);
+                if (valSpan) {
+                    let unit = 'm/s';
+                    if (e.target.id.includes('-a')) unit = 'm/s²';
+                    if (e.target.id.includes('-angle')) unit = '°';
+                    valSpan.textContent = `${e.target.value} ${unit}`;
+                }
+            });
+        });
+
+        function runMRU() { console.log("MRU"); }
+        function runMRUA() { console.log("MRUA"); }
+        function runParabolico() { console.log("Parabólico"); }
+    </script>
+</body>
+</html>
